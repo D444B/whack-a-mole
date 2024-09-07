@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game - WHACK-A-MOLE</title>
+</head>
+<body>
+<script>
+
+    let windowW=500;
+    let windowH=500;
+    let fps = 30;
+    let points = 0;
+    
+
+    function Entitiy(){
+        Entitiy.prototype._count++;
+        this.id = Entitiy.prototype._count;
+        this.components = {};
+        this.addComponent = function addComponent(component){
+            this.components[component.name] = component;
+            return this;
+        }
+        this.removeComponent = function removeComponent(component){
+            delete this.components[component.name];
+            return this;
+        }
+    }
+
+    function Componenet(name, value){
+        this.name = name;
+        this.value = value;
+    }
+
+    (function init(){
+        Entitiy.prototype._count = 0;
+        }())
+
+    let entities = [];
+
+
+        entities.push(
+            new Entitiy()
+        .addComponent(new Componenet('moleX', 50)) //default x pozicija
+        .addComponent(new Componenet('moleY', 50)) //default y pozicija
+        .addComponent(new Componenet('frameCounterGoodMole', 0)) // frame counter, svaki nulti se izvrsava kod 
+        .addComponent(new Componenet('frameCounterBadMole', 0))
+        .addComponent(new Componenet('posX', 0)) //pozicija misa
+        .addComponent(new Componenet('posY', 0))
+        .addComponent(new Componenet('click', 0)) //klik, true, false
+        .addComponent(new Componenet('goodRandomX', 0))
+        .addComponent(new Componenet('goodRandomY', 0)) // good su bele, bad su crvene
+        .addComponent(new Componenet('badRandomX', 0)) //random promenljive
+        .addComponent(new Componenet('badRandomY', 0))
+        .addComponent(new Componenet('badRandomX2', 0))
+        .addComponent(new Componenet('badRandomY2', 0))
+        .addComponent(new Componenet('badRandomX3', 0))
+        .addComponent(new Componenet('badRandomY3', 0))
+        .addComponent(new Componenet('badRandomX4', 0))
+        .addComponent(new Componenet('badRandomY4', 0))
+        .addComponent(new Componenet('changingSize', 35)) // velicina crvenih koja se menja
+        .addComponent(new Componenet('normalSize', 35)) // velicina bele i ostalih
+        .addComponent(new Componenet('result', 0)) /* true ili false, true nastavlja se igra, false gasi se*/
+        .addComponent(new Componenet('colorGood', "white"))
+        .addComponent(new Componenet('colorGood2', "green"))
+        .addComponent(new Componenet('colorBad', "red"))
+        .addComponent(new Componenet('speedMultiplier', 1))
+        .addComponent(new Componenet('moveX', 0)) // kretanje bele
+        .addComponent(new Componenet('moveY', 0)) //kretanje bele
+        .addComponent(new Componenet('badMoveX', 0)) //crvene
+        .addComponent(new Componenet('badMoveY', 0))  //crvene
+        .addComponent(new Componenet('chaseBadMoveX', 0)) //crvena da juri belu
+        .addComponent(new Componenet('chaseBadMoveY', 0))  //crvena da juri belu
+        .addComponent(new Componenet('chaseBadMoveX2', 0)) //crvena da juri belu
+        .addComponent(new Componenet('chaseBadMoveY2', 0))  //crvena da juri belu
+        .addComponent(new Componenet('score', 0)) //true ili false
+
+
+
+
+
+       );
+
+
+    let systems = [];
+   
+      
+
+    function userInputSystem(x){
+        return x;
+    }
+
+    //User input system
+    userInputSystem = (function inputSystem(){
+    
+        //Inicializacija
+            let mouseMoveEvents = [];
+            let mouseClickEvents = [];
+            
+
+        //Set sluzi za jedinstvene vrednosti, nisam siguran da li treba ovde
+        function handleMouseMove(event) {
+            pos = { posX: event.clientX, posY: event.clientY};
+            mouseMoveEvents.splice(0, mouseMoveEvents.length);
+            mouseMoveEvents.push(pos.posX, pos.posY);
+            mouseMoveEvents = [...(new Set(mouseMoveEvents))];
+        }
+
+        function handleClick(event) {
+            mouseClickEvents.splice(0, mouseClickEvents.length);
+            mouseClickEvents.push(event.button);
+            mouseClickEvents = [...(new Set(mouseClickEvents))];
+        }
+
+       
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('click', handleClick);
+      
+      
+        //System funkcija
+        return (entities) =>{
+            let newEntities = []
+            for(e of entities){
+               
+                if (e.components.posX !== undefined && e.components.posY !== undefined) {
+                       if (mouseClickEvents.includes(0)) {
+                        if(e.components.click !== undefined) {
+                            e.components.click = true;
+                            mouseClickEvents.splice(0, mouseClickEvents.length);
+                        }
+                    }
+                }
+
+                if (e.components.posX !== undefined && e.components.posY !== undefined) {
+                    if (mouseMoveEvents[0] < windowW && mouseMoveEvents[1] < windowH) {
+                        e.components.posX.value = mouseMoveEvents[0];
+                        e.components.posY.value = mouseMoveEvents[1];
+                    }
+                }
+                newEntities.push(e);
+            }
+            return newEntities;
+        } 
+    })();
+   
+
+
+    //Graphics System
+    renderingSystem = (function graphicsSystem(){
+
+        // //Graphics Init: 
+        document.body.innerHTML += '<canvas id="window" width=' + windowW + ' height=' + windowH + ' ></canvas>';
+        let window = document.getElementById('window');
+        let ctx = window.getContext('2d');
+     
+   
+ 
+        
+  return(entities) => {
+
+            //Graphics Loop
+
+             //Clear
+            ctx.clearRect(0 ,0 , windowW, windowH);
+            ctx.rect(0 ,0 , windowW, windowH);
+            ctx.fillStyle = "#3fd0fc";
+            ctx.fill();
+            
+            if (document.contains (document.getElementById("pts"))) {
+                document.getElementById("pts").remove();
+            }
+
+            //Skor
+            var pointText = document.createElement('h2');
+            pointText.id = 'pts';
+            pointText.style.userSelect = "none";
+            pointText.innerHTML = "Your score is " + points + " points.";
+            document.body.appendChild(pointText);
+              
+           
+            for(e of entities){
+            
+            if (e.components.frameCounterGoodMole.value === 0) {
+                 e.components.goodRandomX.value = Math.ceil(Math.random() * 9);
+                 e.components.goodRandomY.value = Math.ceil(Math.random() * 9);
+                 e.components.moveX.value = 0;
+                 e.components.moveY.value = 0;
+                                 
+            }
+            if (e.components.frameCounterBadMole.value === 0) {
+                 e.components.chaseBadMoveX.value = 0;
+                 e.components.chaseBadMoveY.value = 0;
+                 e.components.chaseBadMoveX2.value = 0;
+                 e.components.chaseBadMoveY2.value = 0;
+                 e.components.badRandomX.value = Math.ceil(Math.random() * 9);
+                 e.components.badRandomY.value = Math.ceil(Math.random() * 9); 
+                 e.components.badRandomX2.value = Math.ceil(Math.random() * 9);
+                 e.components.badRandomY2.value = Math.ceil(Math.random() * 9);
+                 e.components.badRandomX3.value = Math.ceil(Math.random() * 9);
+                 e.components.badRandomY3.value = Math.ceil(Math.random() * 9);
+                 e.components.badRandomX4.value = Math.ceil(Math.random() * 9);
+                 e.components.badRandomY4.value = Math.ceil(Math.random() * 9);
+            }
+              if(e.components.moleX !== undefined){
+    
+               
+               
+                e.components.frameCounterGoodMole.value = (e.components.frameCounterGoodMole.value + 1) % fps;
+                e.components.frameCounterBadMole.value = (e.components.frameCounterBadMole.value + 1) % fps;
+
+
+
+                if (points >= 10) {
+                if (e.components.moleX.value * e.components.goodRandomX.value <= windowW/2) {
+                    e.components.moveX.value += 2;  
+                } else {
+                    e.components.moveX.value -= 2;          
+                }
+
+                if (e.components.moleY.value * e.components.goodRandomY.value <= windowH/2) {
+                   e.components.moveY.value += 2;       
+                } else {
+                    e.components.moveY.value -= 2;  
+                  
+                }
+            }
+
+
+            if (points >= 20){
+            //badMole4 chase
+            // x bele minus x crvene
+            let deltaX = (e.components.moleX.value * e.components.goodRandomX.value + e.components.moveX.value) - (e.components.moleX.value * e.components.badRandomX4.value);
+            let stepX = deltaX / fps;
+            // y bele minus y crvene
+            let deltaY = (e.components.moleY.value *  e.components.goodRandomY.value +  e.components.moveY.value) - (e.components.moleY.value *  e.components.badRandomY4.value);
+            let stepY = deltaY / fps;
+            e.components.chaseBadMoveX.value += stepX;
+            e.components.chaseBadMoveY.value += stepY;
+            }
+
+
+            if (points >= 25){
+            //badMole3 chase
+            // x bele minus x crvene
+            let deltaX2 = (e.components.moleX.value * e.components.goodRandomX.value + e.components.moveX.value) - (e.components.moleX.value * e.components.badRandomX3.value);
+            let stepX2 = deltaX2 / fps;
+             // y bele minus y crvene
+            let deltaY2 = (e.components.moleY.value *  e.components.goodRandomY.value +  e.components.moveY.value) - (e.components.moleY.value *  e.components.badRandomY3.value);
+            let stepY2 = deltaY2 / fps;
+            e.components.chaseBadMoveX2.value += stepX2;
+            e.components.chaseBadMoveY2.value += stepY2;
+        }
+
+
+
+            // Path2D dozvoljava crtanje elementa koji se prati u html canvasu
+            //GoodMole
+            const goodMole = new Path2D();
+            //arc = pos x centra kruga, pos y centra kruga, radius, start angle, end angle
+            goodMole.arc(e.components.moleX.value * e.components.goodRandomX.value + e.components.moveX.value, e.components.moleY.value *  e.components.goodRandomY.value +  e.components.moveY.value, e.components.normalSize.value, 0, 2 * Math.PI);
+            ctx.fillStyle = e.components.colorGood.value;
+            if (ctx.isPointInPath(goodMole, e.components.posX.value, e.components.posY.value)) {                      
+             if (e.components.click == true) {
+                ctx.fillStyle = e.components.colorGood2.value;
+                }
+            }
+            ctx.fill(goodMole);
+
+            
+            
+            
+            
+            const badMole1 = new Path2D();
+            badMole1.arc(e.components.moleX.value * e.components.badRandomX.value, e.components.moleY.value *  e.components.badRandomY.value, e.components.changingSize.value, 0, 2 * Math.PI);
+
+                ctx.fillStyle = e.components.colorBad.value;
+                ctx.fill(badMole1);
+          
+          
+          
+                if (points >= 5) {
+                    const badMole2 = new Path2D();
+               
+                    badMole2.arc(e.components.moleX.value * e.components.badRandomX2.value, e.components.moleY.value *  e.components.badRandomY2.value,  e.components.changingSize.value, 0, 2 * Math.PI); 
+
+                ctx.fillStyle = e.components.colorBad.value;
+         
+                ctx.fill(badMole2);
+            }
+
+            if (points >= 15) {
+                const badMole3 = new Path2D();
+                badMole3.arc(e.components.moleX.value * e.components.badRandomX3.value + e.components.chaseBadMoveX2.value, e.components.moleY.value *  e.components.badRandomY3.value + e.components.chaseBadMoveY2.value, e.components.normalSize.value, 0, 2 * Math.PI);
+                ctx.fillStyle = e.components.colorBad.value;
+                ctx.fill(badMole3);
+            }
+
+            if (points >= 20) {
+                const badMole4 = new Path2D();
+                badMole4.arc(e.components.moleX.value * e.components.badRandomX4.value + e.components.chaseBadMoveX.value, e.components.moleY.value *  e.components.badRandomY4.value + e.components.chaseBadMoveY.value, e.components.normalSize.value, 0, 2 * Math.PI);
+                ctx.fillStyle = e.components.colorBad.value;
+                ctx.fill(badMole4);
+            }
+          
+          
+            }        
+            return entities;
+       }}
+    }());
+   
+
+
+  levelSystem = function(entities){
+        let newEntities = [];
+        for(e of entities){
+            if(points >= 30){
+                e.components.changingSize.value = e.components.normalSize.value + 15;
+            }
+            newEntities.push(e);
+        }
+        return newEntities;
+    }
+
+      clickDetectionSystem = function(entities){
+        let newEntities = [];
+        function detect(cursorPosX, cursorPosY, cricleX, circleY, radius) {
+            
+            if (cursorPosX >= cricleX - radius && cursorPosX <= cricleX + radius && cursorPosY >= circleY - radius && cursorPosY <= circleY + radius){
+                if(e.components.click === true){  
+                console.log("A mole has been clicked");        
+                return true;
+                }
+            }
+
+            return false;
+        }
+
+        for(e of entities){
+            if(e.components.click !== undefined){
+                if (e.components.posX.value !== undefined && e.components.posY.value !== undefined && e.components.moleX.value !== undefined && e.components.moleY.value !== undefined){
+
+                    function checkClick() {
+
+                                    //imutabilnost?
+                    const goodMoleDetect = detect(e.components.posX.value, e.components.posY.value, e.components.moleX.value * e.components.goodRandomX.value + e.components.moveX.value, e.components.moleY.value *  e.components.goodRandomY.value +  e.components.moveY.value, e.components.normalSize.value);
+
+                    const badMole1Detect = detect(e.components.posX.value, e.components.posY.value, e.components.moleX.value * e.components.badRandomX.value, e.components.moleY.value *  e.components.badRandomY.value, e.components.changingSize.value);
+                
+                    
+                    const badMole2Detect = detect(e.components.posX.value, e.components.posY.value, e.components.moleX.value * e.components.badRandomX2.value, e.components.moleY.value *  e.components.badRandomY2.value, e.components.changingSize.value);
+                   
+
+                    const badMole3Detect = detect(e.components.posX.value, e.components.posY.value, e.components.moleX.value * e.components.badRandomX3.value + e.components.chaseBadMoveX2.value, e.components.moleY.value *  e.components.badRandomY3.value + e.components.chaseBadMoveY2.value, e.components.normalSize.value);
+
+                    const badMole4Detect = detect(e.components.posX.value, e.components.posY.value, e.components.moleX.value * e.components.badRandomX4.value + e.components.chaseBadMoveX.value, e.components.moleY.value *  e.components.badRandomY4.value + e.components.chaseBadMoveY.value, e.components.normalSize.value);
+
+
+                    if (points < 5) {
+                        if (badMole1Detect) {
+                            return false;
+                        }
+                        
+                    }
+                    if (points >= 5 && points < 15) {
+                        if (badMole1Detect || badMole2Detect) {
+                            return false;
+                        }
+                    }
+                    if (points >= 15 && points < 20) {
+                        if (badMole1Detect || badMole2Detect || badMole3Detect) {
+                            return false;
+                        }
+                    }
+                    if (points >= 20) {
+                        if (badMole1Detect || badMole2Detect || badMole3Detect || badMole4Detect) {
+                            return false;
+                        
+                        }
+                    } if (goodMoleDetect) {
+                        e.components.frameCounterGoodMole.value = 0;
+                        e.components.frameCounterBadMole.value = 0;
+                        e.components.score = true; 
+                       return true;  
+                    }
+
+              return true;
+            }
+
+
+                    e.components.result = checkClick();
+                    e.components.click = false;
+                }
+            }
+            newEntities.push(e);
+        }
+        return newEntities;
+    }
+    
+    
+    
+    function pointsSystem(entities){
+        for(e of entities){
+            if(e.components.score !== undefined){
+                if(e.components.score === true){
+                    points = points + 1;
+                    console.log(points);
+                    e.components.score = false;
+                }
+            }
+        }
+        return entities;
+    } 
+
+    function gameOver(entities){
+        for(e of entities){
+            if(e.components.result !== undefined){
+                if(e.components.result === false){
+                    e.components.result = true; 
+                    alert("Game over! Your score was: " + points + " points.");
+                    location.reload();
+                }
+            }
+        }
+        return entities;
+    } 
+
+
+    systems.push(userInputSystem);
+    systems.push(renderingSystem);
+    systems.push(levelSystem);
+    systems.push(clickDetectionSystem);
+    systems.push(pointsSystem);
+    systems.push(gameOver);
+
+    function game(entities, systems){
+        for(s of systems)
+            {
+                entities = s(Object.freeze(entities));
+            }                   
+    }
+
+    //Set interval kao dleta time
+    setInterval(() => {
+            game(entities, systems);
+        }, 1000/fps);
+
+</script> 
+</body>
+</html>
+
